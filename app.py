@@ -17,6 +17,7 @@ import threading
 import time
 import traceback
 import types
+import urllib.request
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
@@ -140,6 +141,19 @@ class Page(BaseHTTPRequestHandler):
         pass
 
 
+def keep_awake():
+    """Бесплатный Render усыпляет сервер через 15 мин без заходов — заходим на свой адрес сами раз в 10 мин
+    (запрос идёт через интернет, Render считает его заходом). UptimeRobot тогда не обязателен."""
+    url = os.environ.get("RENDER_EXTERNAL_URL")
+    while url:
+        time.sleep(600)
+        try:
+            urllib.request.urlopen(url, timeout=30).read()
+        except OSError:
+            pass
+
+
 if __name__ == "__main__":
     threading.Thread(target=loop, daemon=True).start()
+    threading.Thread(target=keep_awake, daemon=True).start()
     HTTPServer(("0.0.0.0", int(os.environ.get("PORT") or 10000)), Page).serve_forever()
